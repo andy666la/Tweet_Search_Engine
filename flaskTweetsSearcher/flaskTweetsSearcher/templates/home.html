@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-light rounded-3">
+    <div class="container-fluid py-5">
+        <img src="{{url_for('static', filename='logo.jpg')}}" ,width = "80", height="80" />
+        <h1 class="display-5 fw-bold">Tweets search engine</h1>
+        <p class="col-md-8 fs-4"></p>
+
+        <div class="search-design" >
+            <form method="post" class="form-inline" action="{{ url_for('content_search') }}" >
+    {#            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
+            <input class="form-control" type="text" name="search" placeholder="Please input keyword" >&nbsp;&nbsp;
+            <button type="submit" class="btn btn-primary" name="action" value="lucene">Lucene Search</button>&nbsp;&nbsp;
+            <button type="submit" class="btn btn-primary" name="action" value="hadoop">Hadoop Search</button>
+            <button type="submit" class="btn btn-primary" name="action" value="test">Test Search</button>
+            </form>
+        </div>
+
+        <div style="height:50px"></div>
+        <div >{{desc}}</div>
+        <div style="height:10px"></div>
+        <table style="border-collapse:collapse;" border = 1>
+            {% if engine_type == 'lucene' %}
+                <tr style="border:1px solid #ccc;">
+                    <th>rank </th>
+                    <th>score </th>
+                    <th>text </th>
+                    <th>retweet_count </th>
+                </tr>
+            {% elif engine_type == 'hadoop' %}
+                <tr style="border:1px solid #ccc;">
+                    <th>rank </th>
+                    <th>text </th>
+                </tr>
+            {% endif %}
+            {% for row in result %}
+                <tr style="border:1px solid #ccc;">
+                    {% for cell in row %}
+                        <th>{{cell}} </th>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+      </table>
+
+    </div>
+</div>
+{% endblock %}

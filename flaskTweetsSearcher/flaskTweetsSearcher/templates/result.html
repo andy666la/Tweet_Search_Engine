@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Result</title>
+</head>
+<body>
+      <table border = 1>
+{#         {% for key, value in result.items() %}#}
+{#             iteritems#}
+{#            <tr>#}
+{#               <th> {{ key }} </th>#}
+{#               <td> {{ value }} </td>#}
+{#            </tr>#}
+{#         {% endfor %}#}
+
+        {% for row in result %}
+            <tr>
+                <th>{{row[0]}} ,</th>
+                <th>{{row[1]}} ,</th>
+                <th>{{row[2]}}</th>
+            </tr>
+        {% endfor %}
+      </table>
+
+   </body>
+</html>
