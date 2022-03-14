@@ -3,7 +3,7 @@
 {% block content %}
 <div class="p-5 mb-4 bg-light rounded-3">
     <div class="container-fluid py-5">
-        <img src="{{url_for('static', filename='logo.jpg')}}" ,width = "80", height="80" />
+        <img src="{{url_for('static', filename='logo.jpeg')}}", width = "80", height="80" />
         <h1 class="display-5 fw-bold">Tweets search engine</h1>
         <p class="col-md-8 fs-4"></p>
 
@@ -31,7 +31,9 @@
             {% elif engine_type == 'hadoop' %}
                 <tr style="border:1px solid #ccc;">
                     <th>rank </th>
+                    <th>score </th>
                     <th>text </th>
+                    <th>retweet_count </th>
                 </tr>
             {% endif %}
             {% for row in result %}

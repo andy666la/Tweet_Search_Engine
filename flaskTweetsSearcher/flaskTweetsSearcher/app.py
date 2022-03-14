@@ -1,10 +1,8 @@
-import os, re
 import subprocess
-from flask import Flask, render_template, url_for, request
+import json, os, math
+from flask import Flask, render_template, request, url_for
 
 app = Flask(__name__)
-
-jar_path = os.path.join(os.path.abspath('.'), r'data/lucene/jars/lucene_242_project.jar')  # jar包路径
 
 
 @app.route('/')
@@ -37,23 +35,24 @@ def content_search():
              ["10", "RT @CryptoHitmann: Excited to announce I am going Full Time #Crypto and why you may want to consider it aswell‼️ #Bitcoin has changed my l…"],
              ]
     if request.form['action'] == 'lucene':
+        print('Lucene Search')
         stat, lucene_res = call_jar(keyword)
         return render_template('home.html', result=lucene_res, desc=stat, engine_type='lucene')
     elif request.form['action'] == 'hadoop':
         print('Hadoop Search')
-        return render_template('home.html', result=tmp_h, desc=None, engine_type='hadoop')
-    else:
-        print('Test')
-        stat, lucene_res = call_jar(keyword)
-        return render_template('home.html', result=lucene_res, desc=stat, engine_type='test')
+        scores = calculate_score(keyword)
+        hadoop_res = get_doc(scores)
+        return render_template('home.html', result=hadoop_res, desc='', engine_type='hadoop')
 
 
 def call_jar(cur_keyword):
     data_dir = "data/tweet_json"
-    index_dir = "data/lucene/dataindex"
+    index_dir = "data/lucene/data_index"
     jar_path = 'data/lucene/jars/lucene_242_project.jar'
+    cmd = "java -jar {} {} {} {}".format(jar_path, data_dir, index_dir, cur_keyword)
+    clean_dir(index_dir)
 
-    process = subprocess.Popen("java -jar {} {} {} {}".format(jar_path, data_dir, index_dir, cur_keyword), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     process.wait()
     command_output = process.stdout.read().decode('utf-8')
 
@@ -73,6 +72,88 @@ def call_jar(cur_keyword):
             res.append(line.split('-->'))
     # res = re.search('index:.*', command_output).group()
     return stat, res
+
+
+def calculate_score(keyword):
+    f_tf = 'data/hadoop/tf/part-r-00000'
+    f_idf = 'data/hadoop/idf/part-r-00000'
+    ori_path = "data/ori_test.json"
+    tf = read_file(f_tf)
+    idf = read_file(f_idf)
+    ori = read_file(ori_path)
+
+    total_line = len(ori.split('\n')) - 1
+    idf_dict = dict()
+    try:
+        for line in idf.split('\n'):
+            item = line.split('\t')
+            if item is None or len(item) == 0 or item == ['']:
+                continue
+            idf_dict[item[0]] = math.log(total_line / (float(item[1]) + 1), 10)
+        # idf_dict = map(lambda l: l.split('\t'), idf.split('\n'))
+    except IndexError as e:
+        print(e)
+
+    tf_idf_dict = dict()
+    for line in tf.split('\n'):
+        if line is None or len(line) == 0:
+            continue
+        word, tmp = line.split(':')
+        obj_id, tmp = tmp.split('#')
+        term_cnt, term_freq = tmp.split('\t')
+        if word not in tf_idf_dict:
+            tf_idf_dict[word] = dict()
+        if word not in idf_dict:
+            continue
+        tf_idf_dict[word][obj_id] = float(term_freq) * float(idf_dict[word])
+    return tf_idf_dict[keyword]
+
+
+def get_doc(scores):
+    res = list()
+    ori_path = "data/ori_test.json"
+    ori = read_file(ori_path)
+    for line in ori.split('\n'):
+        if line is None or len(line) == 0:
+            continue
+        one = json.loads(line)
+        obj_id = one['_id']['$oid']
+        if obj_id in scores.keys():
+            text = one['text']
+            retweet = one['retweet_count']
+            score = scores[obj_id]
+            res.append([score, text, retweet])
+
+    def get_rank(elem):
+        return elem[0]
+    res.sort(key=get_rank, reverse=True)
+    cnt = 1
+    hadoop_res = list()
+    for line in res:
+        if cnt > 10:
+            continue
+        line = [str(cnt)] + line
+        hadoop_res.append(line)
+        cnt += 1
+    return hadoop_res
+
+
+def read_file(path):
+    content = None
+    f = open(path)
+    content = f.read()
+    f.close()
+    return content
+
+
+def clean_dir(path):
+    ls = os.listdir(path)
+    for i in ls:
+        c_path = os.path.join(path, i)
+        if os.path.isdir(c_path):
+            clean_dir(c_path)
+        else:
+            os.remove(c_path)
 
 
 if __name__ == '__main__':
